@@ -38,7 +38,10 @@ func mentorHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
-	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
+	client, err := genai.NewClient(ctx,
+		option.WithAPIKey(apiKey),
+		option.WithEndpoint("https://generativelanguage.googleapis.com/v1"),
+	)
 	if err != nil {
 		json.NewEncoder(w).Encode(map[string]string{"reply": "Ошибка ИИ: " + err.Error()})
 		return
