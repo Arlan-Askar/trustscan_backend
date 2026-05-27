@@ -38,9 +38,11 @@ func mentorHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := context.Background()
+
+	// 1. Создаем клиент через стандартный endpoint, но БЕЗ указания v1 в конце URL
 	client, err := genai.NewClient(ctx,
 		option.WithAPIKey(apiKey),
-		option.WithEndpoint("https://generativelanguage.googleapis.com/v1"),
+		option.WithEndpoint("https://generativelanguage.googleapis.com"),
 	)
 	if err != nil {
 		json.NewEncoder(w).Encode(map[string]string{"reply": "Ошибка ИИ: " + err.Error()})
@@ -48,6 +50,7 @@ func mentorHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer client.Close()
 
+	// 2. Создаем модель без лишних аргументов (клиент сам подставит нужные пути)
 	model := client.GenerativeModel("gemini-1.5-flash")
 	model.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{
