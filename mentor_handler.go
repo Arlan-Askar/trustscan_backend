@@ -45,7 +45,7 @@ func mentorHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer client.Close()
 
-	model := client.GenerativeModel("gemini-2.0-flash")
+	model := client.GenerativeModel("gemini-1.0-pro")
 	model.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{
 			genai.Text("Ты — AI Ментор TrustScan. Объясняй риски смарт-контрактов простым языком, давай краткие советы. Отвечай на русском, дружелюбно и ёмко."),
