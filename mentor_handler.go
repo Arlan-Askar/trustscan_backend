@@ -46,7 +46,7 @@ func mentorHandler(w http.ResponseWriter, r *http.Request) {
 	defer client.Close()
 
 	// Теперь свежая библиотека сама всё поймет!
-	model := client.GenerativeModel("gemini-1.5-flash")
+	model := client.GenerativeModel("gemini-2.5-flash")
 	resp, err := model.GenerateContent(ctx, genai.Text(req.Message))
 	if err != nil {
 		json.NewEncoder(w).Encode(map[string]string{"reply": "Ошибка генерации: " + err.Error()})
