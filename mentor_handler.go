@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 
@@ -10,71 +11,59 @@ import (
 	"google.golang.org/api/option"
 )
 
-// Структура для входящего запроса от Flutter
-type MentorRequest struct {
-	Message string `json:"message"`
-}
-
-// Структура для ответа пользователю
-type MentorResponse struct {
-	Reply string `json:"reply"`
-}
-
 func mentorHandler(w http.ResponseWriter, r *http.Request) {
-	// Проверяем, что запрос именно POST
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != "POST" {
+		http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Декодируем входящий JSON
-	var req MentorRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+	var req struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Message == "" {
+		http.Error(w, `{"error":"empty message"}`, http.StatusBadRequest)
 		return
 	}
 
-	// Достаем API ключ из системы
+	log.Printf("🤖 Mentor: %s", req.Message)
+
 	apiKey := os.Getenv("GEMINI_API_KEY")
 	if apiKey == "" {
-		http.Error(w, "GEMINI_API_KEY is not set on server", http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"reply": "Бэкенд работает! GEMINI_API_KEY не настроен — добавь ключ в переменные окружения.",
+		})
 		return
 	}
 
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"reply": "Ошибка ИИ: " + err.Error()})
 		return
 	}
 	defer client.Close()
 
 	model := client.GenerativeModel("gemini-1.5-flash")
-
-	// Задаем характер нашего ментора
 	model.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{
-			genai.Text("Ты — AI Ментор в приложении TrustScan. Твоя цель — оценивать безопасность смарт-контрактов и отвечать на вопросы о крипте. Пиши в уверенном, экспертном, но простом стиле, используя понятный язык. Общайся дружелюбно, как опытный наставник."),
+			genai.Text("Ты — AI Ментор TrustScan. Объясняй риски смарт-контрактов простым языком, давай краткие советы. Отвечай на русском, дружелюбно и ёмко."),
 		},
 	}
 
-	// Отправляем запрос в Gemini
 	resp, err := model.GenerateContent(ctx, genai.Text(req.Message))
 	if err != nil {
-		http.Error(w, "AI generation failed: "+err.Error(), http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"reply": "Ошибка генерации: " + err.Error()})
 		return
 	}
 
-	// Извлекаем ответ
-	var replyText string = "Не удалось получить ответ от AI."
+	reply := "Не удалось получить ответ."
 	if len(resp.Candidates) > 0 && len(resp.Candidates[0].Content.Parts) > 0 {
 		if txt, ok := resp.Candidates[0].Content.Parts[0].(genai.Text); ok {
-			replyText = string(txt)
+			reply = string(txt)
 		}
 	}
 
-	// Отправляем JSON обратно во Flutter
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(MentorResponse{Reply: replyText})
+	json.NewEncoder(w).Encode(map[string]string{"reply": reply})
 }
