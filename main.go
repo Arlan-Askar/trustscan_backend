@@ -65,6 +65,7 @@ type DexScreenerResponse struct {
 func main() {
 	http.HandleFunc("/scan", corsMiddleware(scanHandler))
 	http.HandleFunc("/health", corsMiddleware(healthHandler))
+	http.HandleFunc("/mentor", corsMiddleware(mentorHandler))
 
 	port := os.Getenv("PORT")
 	if port == "" {
